@@ -14,6 +14,7 @@ from draw import Mockup
 import urlparse as parse
 from urllib import urlopen
 import pygame
+import json
 
 strips = []
 broadcastlisten = True
@@ -97,11 +98,11 @@ class ServerHandler(SimpleHTTPRequestHandler):
         if tag not in self.interest:
             self.interest.append(tag)
 	    #get green and flash the strip with it
-            arr = [self.getcolor(1) for i in range(0,strip.cnt)]
+            arr = [ServerHandler.getcolor(1) for i in range(0,strip.cnt)]
 	    strip.setstrip(0, arr)
             strip.show(0)
         else:
-            arr = [self.getcolor(3) for i in range(0,strip.cnt)]
+            arr = [ServerHandler.getcolor(3) for i in range(0,strip.cnt)]
             strip.setstrip(0, arr)
             strip.show(0)
 	time.sleep(1)
@@ -113,8 +114,8 @@ class ServerHandler(SimpleHTTPRequestHandler):
             color = 2
         else:
             color = 1
-        arr = [self.getcolor(color) for i in range (0, len(self.interest))]
-	arr += [self.getcolor(0) for i in range (len(self.interest), strip.cnt)]
+        arr = [ServerHandler.getcolor(color) for i in range (0, len(self.interest))]
+	arr += [ServerHandler.getcolor(0) for i in range (len(self.interest), strip.cnt)]
         strip.setstrip(0, arr)
         strip.show(0)
         print("Interest for {0} is now {1}".format(tag, self.interest))
@@ -129,6 +130,42 @@ class ServerHandler(SimpleHTTPRequestHandler):
 	status = str(res.read())
         res.close()
         return status
+
+    @staticmethod
+    def get_weather(city="Glasgow"):
+        """Get weather data and convert its format to a tuple (temperature, rain, cloud)"""
+        weather = json.loads(urlopen('http://api.openweathermap.org/data/2.5/weather?units=metric&q={0}'.format(city)).read())
+        temp = weather['main']['temp']
+        try:
+            rain = weather['rain']['3h']
+            cond = weather['weather'][0]['id']
+        except KeyError:
+            rain = 0
+            cond = 0
+        clouds = weather['clouds']['all']
+
+        if temp < 8:
+            temp = (0,0,127)
+        elif temp < 13:
+            temp = ServerHandler.getcolor(1)
+        else:
+            temp = ServerHandler.getcolor(3)
+
+        if rain < 3:
+            rain = ServerHandler.getcolor(1)
+        elif rain < 10:
+            rain = ServerHandler.getcolor(2)
+        else:
+            rain = ServerHandler.getcolor(3)
+
+        if clouds < 30:
+            clouds = ServerHandler.getcolor(1)
+        elif clouds < 70:
+            clouds = ServerHandler.getcolor(2)
+        else:
+            clouds = ServerHandler.getcolor(3)
+
+        return (temp, rain, clouds)
 
     def do_GET(self):
         #logging.error(self.headers)
@@ -151,7 +188,8 @@ class ServerHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         #self.wfile.close()
 
-    def getcolor(self, num):
+    @staticmethod
+    def getcolor(num):
         num = int(num)
         if num == 0:
             return (0,0,0)
@@ -177,7 +215,7 @@ class ServerHandler(SimpleHTTPRequestHandler):
             #strip = self.strips[0]
             strip = StripHandler('10.10.10.38', 80, 8)
             for i in range(0, strip.cnt):
-               c = self.getcolor(states[i]) 
+               c = ServerHandler.getcolor(states[i]) 
                strip.setled(0, i, c[0], c[1], c[2])
                print("{0} {1} {2} {3}".format(i, c[0], c[1], c[2]))
             strip.show(0)
@@ -246,8 +284,10 @@ if __name__ == "__main__":
     keepalive.start()
 
     skypethread = threading.Thread(target=updateskype)
-    skypethread.start()
+    #skypethread.start()
     
     print ("Serving HTTP on", sa[0], "port", sa[1], "...")
-    httpd.serve_forever()
-    broadcastlisten = False
+    try:
+        httpd.serve_forever()
+    except:
+        broadcastlisten = False
