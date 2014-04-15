@@ -80,6 +80,7 @@ class ServerHandler(SimpleHTTPRequestHandler):
 
     interest = []
     strips = []
+    options = {} #Key: IP, Value: List [now, weather, project, name]
 
     def __init__(self,request,client_address,server):
         self.mockup = Mockup()
@@ -212,8 +213,7 @@ class ServerHandler(SimpleHTTPRequestHandler):
             self.handle_tag(params[0][1]) #harcoded value of first query param
         elif res.path == '/availastrip':
             states = params[0][1][::-1] #string of values
-            #strip = self.strips[0]
-            strip = StripHandler('10.10.10.38', 80, 8)
+            strip = StripHandler('127.0.0.1', 8001, 8)
             for i in range(0, strip.cnt):
                c = ServerHandler.getcolor(states[i]) 
                strip.setled(0, i, c[0], c[1], c[2])
@@ -221,6 +221,9 @@ class ServerHandler(SimpleHTTPRequestHandler):
             strip.show(0)
 	    with open("rod.txt", "a") as logfile:
 	        logfile.write("{0}: AvailaStrip interaction: {1} \n".format(datetime.now(), states))
+        elif res.path == '/options':
+            addr = self.client_address[0]
+            self.options[addr] = [params[0][1], params[1][1], params[2][1], params[3][1]]
         self.log_request(200)
         self.send_response(200, "OK")
         self.end_headers()
