@@ -175,7 +175,8 @@ You need Raspberry Pi with enable hardware SPI support.
 
 1. First of all, check out the [RPi-LPD8806] library which also explains how to connect the strip to the Pi.
 2. Install the library as per the documentation.
-3. ```
+3. 
+```
 git clone https://github.com/woodypl/ledstrip
 cd ledstrip
 python ledstrip.py
