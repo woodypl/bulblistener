@@ -257,7 +257,7 @@ def detectdevices():
 def updateskype():
     while True:
 	    strip = StripHandler('10.10.10.38', 80, 2)
-	    status = ServerHandler.get_skype_status('ben.murray-smith')
+	    status = ServerHandler.get_skype_status('skypebulb')
 	    if status == "ONLINE":
 		strip.setled(1, 0, 0, 127,0 )
 	    elif status == "BUSY":
