@@ -8,12 +8,12 @@ from datetime import datetime
 from BaseHTTPServer import HTTPServer
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 from shutil import copyfileobj
-from draw import Mockup
+#from draw import Mockup
 #from urllib import parse
 #from apscheduler.scheduler import Scheduler
 import urlparse as parse
 from urllib import urlopen
-import pygame
+#import pygame
 import json
 
 strips = []
@@ -83,7 +83,7 @@ class ServerHandler(SimpleHTTPRequestHandler):
     options = {} #Key: IP, Value: List [now, weather, project, name]
 
     def __init__(self,request,client_address,server):
-        self.mockup = Mockup()
+        #self.mockup = Mockup()
         #pygame.init()
         #self.window = pygame.display.set_mode((848, 480))#, pygame.FULLSCREEN)
         SimpleHTTPRequestHandler.__init__(self, request,client_address,server)
