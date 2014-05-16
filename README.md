@@ -138,7 +138,7 @@ Watch out for errors. You might need to install some development libraries, YMMV
 cd dist/pgs4a
 cp -R ../../../ledmockup/android .
 #connect your device in USB debug mode now
-python android.py build install
+python android.py build ledmockup release install
 ```
 
 This should result in an Android APK being compiled and installed onto your device. You can now run _LedMockup_ on the device - it will accept any images directed at it and display them.
