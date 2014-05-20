@@ -15,8 +15,12 @@ import urlparse as parse
 from urllib import urlopen
 #import pygame
 import json
+import urllib2
+from PIL import Image
+from StringIO import StringIO
 
 strips = []
+ledmockups = []
 broadcastlisten = True
 
 class StripHandler:
@@ -89,10 +93,15 @@ class ServerHandler(SimpleHTTPRequestHandler):
         SimpleHTTPRequestHandler.__init__(self, request,client_address,server)
 
 
-    def dispatch_notification(self):
+    def dispatch_notification(self, remove=False):
         #We're still in the request handler, let's make use of what's available to us
         res = parse.urlparse(self.path)
-        params = parse.parse_qsl(res.query)
+        params = dict(parse.parse_qsl(res.query))
+	action = "Removed" if remove else "New"
+	client = self.client_address[0] #IP
+	with open("notifications.log", "a") as logfile:
+            logfile.write("{0}: {1} notification #{2} from {3}\n".format(client, action, params['id'], params['pkg']))
+
 
     def handle_tag(self, tag):
 	strip = StripHandler('10.10.10.31', 80, 12)
@@ -209,6 +218,8 @@ class ServerHandler(SimpleHTTPRequestHandler):
         params = parse.parse_qsl(res.query)
         if res.path == '/notify':
             self.dispatch_notification()
+	elif res.path == '/denotify':
+	    self.dispatch_notification(remove=True)
         elif res.path == '/nfctag':
             self.handle_tag(params[0][1]) #harcoded value of first query param
         elif res.path == '/availastrip':
@@ -231,10 +242,19 @@ class ServerHandler(SimpleHTTPRequestHandler):
 
         length = int(self.headers.get('Content-Length', 0))
         if length > 0:
-            #f = open('test.png', 'wb')
             data = self.rfile.read(length)
-            import urllib2
-            urllib2.urlopen("http://10.10.10.22:8000", data=data)
+	    self.rfile.close()
+	    self.wfile.close()
+	    av = Image.open('sb.jpg')
+	    im = Image.open(StringIO(data))
+	    imsize = im.size
+	    avsize = (imsize[0]/4, imsize[1]/4)
+	    av = av.resize(avsize, Image.ANTIALIAS)
+	    im.paste(av, (imsize[0]-avsize[0], imsize[1]-avsize[1], imsize[0], imsize[1]))
+	    data = StringIO()
+	    im.save(data, "PNG")
+	    for addr in ledmockups:
+	            urllib2.urlopen("http://{0}:8000".format(addr), data=data.getvalue())
 	    #f.write(data)
             #f.close()
             #self.mockup.filename = 'test.png'
@@ -247,12 +267,16 @@ class ServerHandler(SimpleHTTPRequestHandler):
 
 def detectdevices():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(('0.0.0.0', 5555))
+    sock.bind(('0.0.0.0', 55555))
 
     while broadcastlisten:
         data, addr = sock.recvfrom(1024)
-        print("UDP Broadcast detected: ", data)
-        strips.append(StripHandler(addr, 80, 8))
+        #print("UDP Broadcast detected: ", data)
+        if "LedMockup" in data and addr[0] not in ledmockups:
+		print("Adding LedMockup @{0}".format(addr[0]))
+		ledmockups.append(addr[0])
+	#else:
+	#	strips.append(StripHandler(addr, 80, 8))
 
 def updateskype():
     while True:
@@ -286,7 +310,7 @@ if __name__ == "__main__":
     keepalive = threading.Thread(target=detectdevices)
     keepalive.start()
 
-    skypethread = threading.Thread(target=updateskype)
+    #skypethread = threading.Thread(target=updateskype)
     #skypethread.start()
     
     print ("Serving HTTP on", sa[0], "port", sa[1], "...")
