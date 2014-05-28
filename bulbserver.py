@@ -84,6 +84,7 @@ class ServerHandler(SimpleHTTPRequestHandler):
 
     interest = []
     strips = []
+    avatars = {} #Key: IP, Value: avatar binary data
     options = {} #Key: IP, Value: List [now, weather, project, name]
 
     def __init__(self,request,client_address,server):
@@ -99,8 +100,12 @@ class ServerHandler(SimpleHTTPRequestHandler):
         params = dict(parse.parse_qsl(res.query))
 	action = "Removed" if remove else "New"
 	client = self.client_address[0] #IP
+	
 	with open("notifications.log", "a") as logfile:
-            logfile.write("{0}: {1} notification #{2} from {3}\n".format(client, action, params['id'], params['pkg']))
+       	    try:
+	        logfile.write("{4} {0}: {1} notification #{2} from {3}\n".format(client, action, params['id'], params['pkg'], time.time()))
+	    except:
+	        logfile.write("{4} {0}: {1} unknown notification format. {2}".format(client,action,params,time.time()))
 
 
     def handle_tag(self, tag):
@@ -245,12 +250,16 @@ class ServerHandler(SimpleHTTPRequestHandler):
             data = self.rfile.read(length)
 	    self.rfile.close()
 	    self.wfile.close()
-	    av = Image.open('sb.jpg')
+	    if res.path == '/avatar':
+	        self.avatars[self.client_address[0]] = data
+	        return
 	    im = Image.open(StringIO(data))
 	    imsize = im.size
-	    avsize = (imsize[0]/4, imsize[1]/4)
-	    av = av.resize(avsize, Image.ANTIALIAS)
-	    im.paste(av, (imsize[0]-avsize[0], imsize[1]-avsize[1], imsize[0], imsize[1]))
+	    if self.avatars.has_key(self.client_address[0]):
+	        av = Image.open(self.avatars[self.client_address[0]])
+	        avsize = (imsize[0]/4, imsize[1]/4)
+	        av = av.resize(avsize, Image.ANTIALIAS)
+	        im.paste(av, (imsize[0]-avsize[0], imsize[1]-avsize[1], imsize[0], imsize[1]))
 	    data = StringIO()
 	    im.save(data, "PNG")
 	    for addr in ledmockups:
