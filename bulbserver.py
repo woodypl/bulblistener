@@ -16,6 +16,7 @@ from urllib import urlopen
 #import pygame
 import json
 import urllib2
+import simplejson
 from PIL import Image
 from StringIO import StringIO
 
@@ -100,6 +101,12 @@ class ServerHandler(SimpleHTTPRequestHandler):
         params = dict(parse.parse_qsl(res.query))
 	action = "Removed" if remove else "New"
 	client = self.client_address[0] #IP
+
+	if not self.avatars.has_key(self.client_address[0]) and params.has_key('account'):
+		picasainfo = urllib2.urlopen("http://picasaweb.google.com/data/entry/api/user/{0}?alt=json".format(params['account']))
+		avatarurl = simplejson.loads(picasainfo.read())['entry']['gphoto$thumbnail']['$t']
+		self.avatars[self.client_address[0]] = urllib2.urlopen(avatarurl).read()
+		print("Adding avatar for account {0} and IP {1}".format(params['account'], self.client_address[0]))
 	
 	with open("notifications.log", "a") as logfile:
        	    try:
@@ -256,7 +263,7 @@ class ServerHandler(SimpleHTTPRequestHandler):
 	    im = Image.open(StringIO(data))
 	    imsize = im.size
 	    if self.avatars.has_key(self.client_address[0]):
-	        av = Image.open(self.avatars[self.client_address[0]])
+	        av = Image.open(StringIO(self.avatars[self.client_address[0]]))
 	        avsize = (imsize[0]/4, imsize[1]/4)
 	        av = av.resize(avsize, Image.ANTIALIAS)
 	        im.paste(av, (imsize[0]-avsize[0], imsize[1]-avsize[1], imsize[0], imsize[1]))
