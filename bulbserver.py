@@ -205,7 +205,7 @@ class ServerHandler(SimpleHTTPRequestHandler):
             if not found:
                 self.strips.append(StripHandler(self.client_address[0], 80, 20))
                 print("Strip list updated: {0}".format(str(self.strips)))
-        self.log_request(200)
+        #self.log_request(200)
         self.send_response(200, "OK")
         self.end_headers()
         #self.wfile.close()
@@ -247,13 +247,13 @@ class ServerHandler(SimpleHTTPRequestHandler):
         elif res.path == '/options':
             addr = self.client_address[0]
             self.options[addr] = [params[0][1], params[1][1], params[2][1], params[3][1]]
-        self.log_request(200)
+        #self.log_request(200)
         self.send_response(200, "OK")
         self.end_headers()
 
 
         length = int(self.headers.get('Content-Length', 0))
-        if length > 0:
+        if length > 0 and res.path != '/denotify':
             data = self.rfile.read(length)
 	    self.rfile.close()
 	    self.wfile.close()
@@ -270,14 +270,18 @@ class ServerHandler(SimpleHTTPRequestHandler):
 	    data = StringIO()
 	    im.save(data, "PNG")
 	    for addr in ledmockups:
-	            urllib2.urlopen("http://{0}:8000".format(addr), data=data.getvalue())
+	            	urllib2.urlopen("http://{0}:8000/undim".format(addr))
+			urllib2.urlopen("http://{0}:8000".format(addr), data=data.getvalue())
 	    #f.write(data)
             #f.close()
             #self.mockup.filename = 'test.png'
             #matrix = self.mockup.load_image()
             #self.mockup.draw_matrix(self.window, matrix, (self.mockup.radius, self.mockup.radius))
             #pygame.display.flip()
-        #count = int(self.path[self.path.find('=')+1:])
+        else: #Denotify was called
+		for addr in ledmockups:
+			urllib2.urlopen("http://{0}:8000/dim".format(addr))
+	#count = int(self.path[self.path.find('=')+1:])
         #self.mockup.draw_progress(self.window, count/5)
         #self.wfile.close()
 
